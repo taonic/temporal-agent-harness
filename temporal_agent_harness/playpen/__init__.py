@@ -6,7 +6,8 @@ which traps out of the sandbox into the workflow. Playpen adds the policy engine
 every host call is decided against a `Dogwood <https://github.com/dogwood-policy/dogwood>`_
 policy — Cedar plus conditions over what the session has already done — before it runs. A call
 the policy permits runs; one it forbids raises ``PermissionError`` in the script; one denied only
-by a ``forbid`` annotated ``@on_deny("escalate")`` waits for a person to approve it.
+by a ``forbid`` annotated ``@on_deny("escalate")``, or not let through by a ``permit`` so
+annotated, waits for a person to approve it.
 
 The package splits along the workflow boundary, like the rest of the harness:
 

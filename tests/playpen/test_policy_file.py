@@ -57,5 +57,8 @@ def test_the_example_policy_parses():
         "one_refund_per_order",
         "large_refund_needs_a_person",
     ]
-    assert [r.id for r in rules if r.escalates_on_deny] == ["large_refund_needs_a_person"]
+    assert [r.id for r in rules if r.escalates_on_deny] == [
+        "email_address_on_file",
+        "large_refund_needs_a_person",
+    ]
     assert all("reason" in r.annotations for r in rules)

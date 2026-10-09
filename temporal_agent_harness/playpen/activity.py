@@ -233,6 +233,17 @@ def _decision(
     if not determining:
         # An implicit deny: no forbid fired, and no permit covered the call.
         permits = [r for r in rules if r.effect == "permit" and r.covers(action)]
+        # A permit annotated @on_deny("escalate") sends a call it names but does not let
+        # through to a person. A permit grants rather than prohibits, so one escalating permit
+        # is enough: the others failing to grant the call do not forbid it.
+        escalating = [r for r in permits if r.escalates_on_deny]
+        if escalating:
+            return DogwoodDecision(
+                verdict="escalate",
+                reason=_reasons(escalating),
+                rules=[DogwoodRule(index=r.index, annotations=r.annotations) for r in escalating],
+                policy_sha256=policy_sha256,
+            )
         reason = f"No rule in the policy permits this {action} call."
         explained = [r.annotations["reason"] for r in permits if "reason" in r.annotations]
         if explained:
@@ -240,18 +251,21 @@ def _decision(
         return DogwoodDecision(
             verdict="deny", reason=reason, rules=refs, policy_sha256=policy_sha256
         )
-    reason = " ".join(
-        f"{r.id}: {r.annotations['reason']}" if "reason" in r.annotations else r.id
-        for r in determining
-    )
     # A hard forbid outranks an escalation: a person is asked only when every rule that
     # denied the call says a person may decide it.
     escalate = all(r.escalates_on_deny for r in determining)
     return DogwoodDecision(
         verdict="escalate" if escalate else "deny",
-        reason=reason,
+        reason=_reasons(determining),
         rules=refs,
         policy_sha256=policy_sha256,
+    )
+
+
+def _reasons(rules: list[PolicyRule]) -> str:
+    return " ".join(
+        f"{r.id}: {r.annotations['reason']}" if "reason" in r.annotations else r.id
+        for r in rules
     )
 
 

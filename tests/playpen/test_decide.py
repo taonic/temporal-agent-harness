@@ -7,8 +7,9 @@ import itertools
 
 import pytest
 
-from temporal_agent_harness.playpen.activity import DogwoodPolicyStore
+from temporal_agent_harness.playpen.activity import DogwoodPolicyStore, _decision
 from temporal_agent_harness.playpen.models import DogwoodDecideInput, DogwoodEvent
+from temporal_agent_harness.playpen.policy_file import parse_rules
 
 from .conftest import POLICY_STORE
 
@@ -98,13 +99,13 @@ async def test_email_to_the_address_on_file_is_allowed(store):
     assert [r.id for r in decision.rules] == ["email_address_on_file"]
 
 
-async def test_email_to_an_address_from_the_ticket_is_refused(store):
+async def test_email_to_an_address_from_the_ticket_escalates_to_a_person(store):
     trace = _Trace()
     _looked_up_alice(trace)
     email = {"to": "dana@ledgerline-cpa.example", "subject": "Order history", "body": "..."}
     decision = await _decide(store, trace, trace.request("send_email", email))
-    assert decision.verdict == "deny"
-    assert decision.rules == []
+    assert decision.verdict == "escalate"
+    assert [r.id for r in decision.rules] == ["email_address_on_file"]
     assert "address on file" in decision.reason
 
 
@@ -185,3 +186,50 @@ async def test_list_output_with_records_is_accepted(store):
     )
     decision = await _decide(store, trace, trace.request("get_ticket", {"ticket_id": "T-1"}))
     assert decision.verdict == "allow"
+
+
+# How a deny becomes an escalation, from Dogwood's raw verdict; no CLI needed.
+
+_ESCALATING = parse_rules(
+    """
+    @id("on_file") @on_deny("escalate") @reason("Only to an address on file.")
+    permit (principal, action == NS::Action::"send_email", resource) when { false };
+
+    @id("internal")
+    permit (principal, action == NS::Action::"send_email", resource) when { false };
+
+    @id("refund")
+    permit (principal, action == NS::Action::"issue_refund", resource) when { false };
+
+    @id("never_email") forbid (principal, action == NS::Action::"send_email", resource);
+    """
+)
+
+
+def _verdict(action: str, determining: list[int]):
+    return _decision(
+        action,
+        allowed=False,
+        determining=[_ESCALATING[i] for i in determining],
+        rules=_ESCALATING,
+        policy_sha256="sha",
+    )
+
+
+def test_a_call_an_escalating_permit_does_not_let_through_goes_to_a_person():
+    decision = _verdict("send_email", [])
+    assert decision.verdict == "escalate"
+    assert [r.id for r in decision.rules] == ["on_file"]
+    assert decision.reason == "on_file: Only to an address on file."
+
+
+def test_a_call_no_escalating_permit_names_is_refused():
+    decision = _verdict("issue_refund", [])
+    assert decision.verdict == "deny"
+    assert decision.rules == []
+
+
+def test_a_hard_forbid_outranks_an_escalating_permit():
+    decision = _verdict("send_email", [3])
+    assert decision.verdict == "deny"
+    assert [r.id for r in decision.rules] == ["never_email"]

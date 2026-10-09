@@ -2,7 +2,8 @@
 
 Dogwood reports the rules that determined a decision by their 0-based position in the policy
 file. Playpen needs more than the position — the ``@id`` to name the rule, the ``@reason`` to
-explain it, and ``@on_deny("escalate")`` to send a call to a person instead of failing it — so
+explain it, and ``@on_deny("escalate")`` to send a call to a person instead of failing it
+(a ``forbid`` so annotated denied it, or a ``permit`` so annotated did not let it through) — so
 this module splits the file into statements the way Dogwood counts them: a ``permit`` or
 ``forbid`` is a rule; a ``def`` (a macro) is not.
 

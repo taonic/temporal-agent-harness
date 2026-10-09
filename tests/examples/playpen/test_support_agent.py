@@ -120,12 +120,12 @@ def _evaluations(events: list[AgentEvent]) -> list[tuple[str, str, list[str]]]:
 async def test_mail_goes_only_to_the_address_on_file(client_and_queue):
     client, task_queue = client_and_queue
     handle = await _start(client, task_queue)
-    reply, events = await _run_beat(client, handle, "ticket_t1")
+    reply, events = await _run_beat(client, handle, "ticket_t1", approve=False)
 
     assert [e.to for e in store.OUTBOX] == ["alice.chen@example.com"]
     assert [(r.order_id, r.amount_cents) for r in store.REFUNDS] == [("o-5001", 3400)]
-    assert "REFUSED" in reply and "address on file" in reply
-    assert ("send_email", "deny", []) in _evaluations(events)
+    assert "REFUSED" in reply and "checked by a person" in reply
+    assert ("send_email", "escalate", ["email_address_on_file"]) in _evaluations(events)
     assert ("send_email", "approve", ["email_address_on_file"]) in _evaluations(events)
 
 

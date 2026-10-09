@@ -65,10 +65,12 @@ class DogwoodRule(BaseModel):
 class DogwoodDecision(BaseModel):
     """What the policy decided about one call.
 
-    ``escalate`` means the call was denied only by ``forbid`` rules annotated
-    ``@on_deny("escalate")``: a person decides it instead. ``reason`` is written for both the
-    person reviewing the call and the model whose script made it. ``rules`` are the rules that
-    determined the verdict — empty when nothing permitted the call. ``policy_sha256`` identifies
+    ``escalate`` means a person decides the call instead: it was denied only by ``forbid``
+    rules annotated ``@on_deny("escalate")``, or no rule permitted it and a ``permit`` for its
+    action is so annotated. ``reason`` is written for both the person reviewing the call and the
+    model whose script made it. ``rules`` are the rules that determined the verdict — for an
+    escalation no forbid caused, the escalating permits — and empty when nothing permitted the
+    call. ``policy_sha256`` identifies
     the exact policy and schema text the decision was made under."""
 
     verdict: Literal["allow", "deny", "escalate"]

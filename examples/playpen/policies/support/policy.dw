@@ -32,6 +32,7 @@ permit (
 // Prompt injection. A ticket is written by whoever opened it, so an address in a ticket is
 // a claim, not a fact. Mail goes only to an address the CRM returned this session.
 @id("email_address_on_file")
+@on_deny("escalate")
 @reason("Email goes only to a customer's address on file, as the CRM returned it, never to an address taken from a ticket.")
 permit (principal, action == Support::Action::"send_email", resource)
 when temporal {
