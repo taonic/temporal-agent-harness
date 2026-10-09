@@ -4,6 +4,8 @@
 // How a call is decided:
 //   - a permit rule that matches lets it run, unless a forbid also matches;
 //   - a forbid annotated @on_deny("escalate") sends it to a person instead of failing it;
+//   - a permit annotated @on_deny("escalate") sends a call to its action that it does not let
+//     through to a person, rather than refusing it;
 //   - anything else is refused, and the script sees PermissionError with the @reason.
 // No rule matching means refused: the agent can do only what is written down here.
 //

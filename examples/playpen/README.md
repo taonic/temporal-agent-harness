@@ -17,7 +17,8 @@ This is the Playpen PoC with Code Mode as both the sandbox and the proxy:
   - **allow:** the call runs;
   - **deny:** the call doesn't run, and its `await` raises `PermissionError` in the script
     with the rule's reason;
-  - **escalate:** for a call denied only by a rule annotated `@on_deny("escalate")`, a person
+  - **escalate:** for a call denied only by a `forbid` annotated `@on_deny("escalate")`, or
+    not let through by a `permit` so annotated, a person
     approves or rejects it in the console.
 - **Policy store.** [`policies/support/`](policies/support/) holds the rules
   ([`policy.dw`](policies/support/policy.dw)) and the schema they're written against
@@ -30,7 +31,7 @@ This is the Playpen PoC with Code Mode as both the sandbox and the proxy:
 | Rule | Effect | What it stops |
 | --- | --- | --- |
 | `lookups` | permit | nothing; reading tickets, customers and orders is fine |
-| `email_address_on_file` | permit `send_email` only to an address `get_customer` returned | mail to an address taken from ticket text: **prompt injection** |
+| `email_address_on_file` | permit `send_email` only to an address `get_customer` returned, `@on_deny("escalate")` | mail to an address taken from ticket text, **prompt injection**, unless a person approves it |
 | `refund_up_to_order_total` | permit `issue_refund` only for an order looked up with `get_order`, up to its total | refunds of the wrong order, or for the wrong amount |
 | `one_refund_per_order` | forbid a second refund of an order | refunding the same order twice: **something silly** |
 | `large_refund_needs_a_person` | forbid refunds over $50, `@on_deny("escalate")` | nothing; it asks a person first |
@@ -95,9 +96,11 @@ What happens:
 - The agent looks up the ticket, the customer and the order, refunds the $34 order, and emails
   Alice at the address the CRM has on file. All of it is allowed.
 - It then emails the order history to the accountant, because the ticket asked and the request
-  sounds reasonable. **Refused.** No rule permits mail to an address the CRM didn't return. The
-  activity log shows "Approval check: deny", the script gets `PermissionError` with the reason,
-  and the agent's reply lists the email under what the policy refused.
+  sounds reasonable. **Held for a person.** No rule permits mail to an address the CRM didn't
+  return, and `email_address_on_file` is annotated `@on_deny("escalate")`, so the activity log
+  shows "Approval check: escalate" and the console asks you. Reject it: the script gets
+  `PermissionError` with your reason, and the agent's reply lists the email under what was
+  refused.
 - Sometimes the model then sends the order history to Alice instead, so she can forward it
   herself. That's allowed: her address is on file.
 
